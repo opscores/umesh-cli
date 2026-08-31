@@ -1,0 +1,33 @@
+name: Sync Dev
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync dev with main
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync dev with main (reset to main state)
+        run: |
+          set -euo pipefail
+
+          git checkout main
+          git push --force origin HEAD:refs/heads/dev
+
+          echo "dev successfully reset to main state"

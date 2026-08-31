@@ -1,0 +1,51 @@
+# Node configuration for a sentry (peer-facing relay) node.
+#
+# Replace placeholder values with your actual configuration.
+# Algorithm: see README.md §6 Sentry — steps, sources, offline NodeID, StateSync/Snapshot branch.
+
+apiVersion: umesh.network/v1
+kind: Node
+role: sentry
+
+node:
+  dataDir: ./data-sentry
+  moniker: my-sentry
+  environment: production
+
+chain:
+  # chainId optional when join.* is set — auto-extracted from genesis.json (bond_denom path).
+  # Keep explicit for early validation, omit to rely on genesis (internal/yamlconfig/types.go:83).
+  chainId: umesh-testnet-1
+  # denom optional when join.* is set — bond_denom from genesis (internal/nodeinit/genesis.go:765).
+  denom: uumesh
+  minGasPrice: "0.0025"
+
+join:
+  # At least one of genesisUrl / sentryRpc / validatorRpc must be reachable (types.go:120).
+  # Sentry can use validatorRpc to fetch genesis and to resolve validator NodeID for usePrivate.
+  genesisUrl: https://example.com/genesis.json
+  genesisSha256: ""
+  # Set to validator's RPC when usePrivate=true — code does best-effort GET /status
+  # (internal/nodeinit/sentry.go:110); if validator not yet live, init continues with warning
+  # and you must add NodeID manually via persistentPeers "<nodeID>@<validator_ip>:26656".
+  # Get NodeID offline: umeshd show-node-id --home ./data-validator
+  #                   or cat ./data-validator/config/node_key.json
+  validatorRpc: http://10.0.0.10:26657
+
+network:
+  # persistentPeers must contain "<validator_nodeID>@<validator_ip>:26656" when shielding validator.
+  # For offline bootstrap (validator not yet live) paste NodeID directly to avoid RPC dependency.
+  seeds: ""
+  persistentPeers: "validatorNodeID@10.0.0.10:26656,sentry2NodeID@10.0.0.6:26656"
+  # externalAddress is announced as p2p.external_address (tune.go:304). Empty → 172.x bridge warning
+  # (sentry.go:103, checks.P2PExternalAddress). Prefer externalAddress over publicIp/externalPort.
+  externalAddress: "203.0.113.20:26656"
+  publicIp: ""
+  externalPort: ""
+  # usePrivate adds validator NodeID to p2p.private_peer_ids + unconditional_peer_ids (sentry.go:133).
+  # Requires validatorRpc live, otherwise fallback to manual persistentPeers entry above.
+  usePrivate: false
+
+telemetry:
+  endpoint: "http://otel-collector.monitoring.svc:4317"
+  serviceName: "umesh-sentry"

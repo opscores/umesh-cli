@@ -1,0 +1,33 @@
+# Node configuration for umeshctl init
+# Replace placeholder values with your actual configuration.
+# Never store secrets (keyring passwords) in this file.
+# Use --keyring-password-file, --keyring-password-stdin, or --keyring-password-exec instead.
+
+apiVersion: umesh.network/v1
+kind: Node
+role: genesis
+
+node:
+  dataDir: ./data-validator
+  moniker: my-validator
+  environment: production
+
+chain:
+  chainId: umesh-testnet-1
+  denom: uumesh
+  minGasPrice: "0.0025"
+
+validator:
+  keyName: validator
+  stakeAmount: "1000000000000uumesh"
+  selfDelegation: "1000000000000uumesh"
+  externalAddress: ""
+  commission:
+    rate: "0.05"
+    maxRate: "0.20"
+    maxChangeRate: "0.01"
+  minSelfDelegation: "1000000"
+
+telemetry:
+  endpoint: "http://otel-collector.monitoring.svc:4317"
+  serviceName: "umesh-validator"

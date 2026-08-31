@@ -1,0 +1,45 @@
+# Node configuration for a public RPC node.
+#
+# Replace placeholder values with your actual configuration.
+# Algorithm: see README.md §7 RPC — steps, sources, firewall, sync check.
+
+apiVersion: umesh.network/v1
+kind: Node
+role: rpc
+
+node:
+  dataDir: ./data-rpc
+  moniker: my-rpc
+  environment: production
+  # pruning is local instance storage strategy (app.toml), not chain property.
+  # custom = keep recent 1000 blocks + interval 100 (default for RPC, window for dApp queries)
+  # everything = pruned, only broadcast/status (light Tx broadcaster)
+  # nothing = archive (for indexers), default = SDK default
+  # chain.pruning is intentionally not used — use node.pruning
+  pruning: custom
+
+chain:
+  # chainId/denom optional when join.* is set — auto-extracted from genesis (genesis.go:765)
+  chainId: umesh-testnet-1
+  denom: uumesh
+  minGasPrice: "0.0025"
+
+join:
+  # At least one of sentryRpc or genesisUrl required for RPC (types.go:127).
+  # Priority: sentryRpc (RPC /genesis) → genesisUrl (static file) → validatorRpc (fallback).
+  # sentryRpc should be live Sentry before init; genesisUrl (S3/CDN) avoids Catch-22 if Sentry is down.
+  genesisUrl: https://example.com/genesis.json
+  genesisSha256: ""
+  sentryRpc: http://10.0.0.5:26657
+  validatorRpc: http://10.0.0.10:26657
+
+network:
+  seeds: ""
+  # For instant broadcast_tx_sync to validator, add Sentry NodeID as persistent peer
+  persistentPeers: "sentryNodeID@10.0.0.5:26656"
+  # externalAddress is p2p.external_address (tune.go:304). Empty → 172.x bridge warning.
+  externalAddress: "203.0.113.30:26656"
+
+telemetry:
+  endpoint: "http://otel-collector.monitoring.svc:4317"
+  serviceName: "umesh-rpc"
