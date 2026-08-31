@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: ubuntu-26.04
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            binary: umeshctl
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Build Binary
+        env:
+          CGO_ENABLED: 0
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p dist
+          make build BINARY=dist/${{ matrix.binary }} VERSION=${{ github.ref_name }}
+
+      - name: Generate Checksum
+        run: |
+          cd dist
+          sha256sum ${{ matrix.binary }} > ${{ matrix.binary }}.sha256
+
+      - name: Create tar.gz Archive
+        run: |
+          cd dist
+          tar -czf ${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz ${{ matrix.binary }}
+          sha256sum ${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz > ${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz.sha256
+
+      - name: Publish Release Assets
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            dist/${{ matrix.binary }}
+            dist/${{ matrix.binary }}.sha256
+            dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
+            dist/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz.sha256
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

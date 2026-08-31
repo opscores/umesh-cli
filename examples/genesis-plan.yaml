@@ -1,0 +1,205 @@
+# Umesh Genesis Plan — declarative config for production genesis
+# 
+# Usage:
+#   umeshctl genesis plan --config genesis-plan.yaml --data-dir ./data-validator --keyring-password-file pw.txt
+#   umeshctl genesis validate-plan --config genesis-plan.yaml
+#   umeshctl genesis report --config genesis-plan.yaml
+
+chain:
+  chain_id: "umesh-testnet-1"
+  moniker: "umesh-genesis"
+  denom: "uumesh"
+  decimals: 6
+  genesis_time: "2026-10-01T00:00:00Z"   # "now" / "" = start immediately; or RFC3339 e.g. "2026-08-15T00:00:00Z"
+  denom_uri: "https://github.com/opscores/node-umesh"   # optional: docs URL for the token (bank denom_metadata.uri)
+  # Immutable on-chain constitution (gov.constitution). Shown in governance UI.
+  constitution: |
+    Umesh is a sovereign interchain platform built on the Cosmos SDK, designed
+    to enable secure, transparent and self-sovereign collaboration. The network
+    upholds neutrality, open participation and long-term sustainability, and is
+    governed on-chain by its stakers through transparent, verifiable governance.
+
+  # Consensus parameters written into genesis.json. Fixed forever at launch.
+  # Any field omitted here falls back to production defaults matching Cosmos
+  # Hub (cosmoshub-4). Only override deliberately.
+  consensus:
+    # block.max_bytes: 22020096   # 21 MiB max block size
+    block_max_gas: 30000000        # 30M gas cap per block (wasmd recommends limiting; -1 = unlimited/DoS risk)
+    # time_iota_ms: 1000          # 1s granularity for block time
+    # evidence.max_age_num_blocks: 100000
+    # evidence.max_age_duration: "48h"   # evidence retention window
+    # evidence.max_bytes: 1048576         # 1 MiB max evidence per block
+    # validator.pub_key_types: ["ed25519"]
+    # Authority allowed to update consensus params via x/consensus
+    # MsgUpdateParams. When empty, the gov module address is used by default.
+    authority: "umesh10d07y265gmmuvt4z0w9aw880jnsr700jplz74g"
+
+tokenomics:
+  # Total supply in base denom (uumesh)
+  # 1_000_000_000 UMESH = 1_000_000_000_000_000 uumesh
+  total_supply: "1000000000000000"
+
+  allocations:
+    # --- Foundation / Treasury ---
+    - name: "foundation"
+      type: "base_account"
+      percentage: 20.0
+      key_name: "foundation"
+
+    # --- Core Team (continuous vesting) ---
+    - name: "team"
+      type: "continuous_vesting"
+      percentage: 15.0
+      key_name: "team"
+      vesting:
+        start_time: "2026-10-01T00:00:00Z"
+        end_time: "2029-08-15T00:00:00Z"
+
+    # --- Seed/Private Investors (delayed vesting) ---
+    - name: "investors"
+      type: "delayed_vesting"
+      percentage: 10.0
+      key_name: "investors"
+      vesting:
+        end_time: "2028-08-15T00:00:00Z"
+
+    # --- Ecosystem Grants ---
+    - name: "ecosystem"
+      type: "base_account"
+      percentage: 15.0
+      key_name: "ecosystem"
+
+    # --- Airdrop / Community ---
+    - name: "airdrop"
+      type: "base_account"
+      percentage: 25.0
+      key_name: "airdrop"
+
+    # --- Genesis Validators ---
+    - name: "validators"
+      type: "validator_set"
+      percentage: 15.0
+      validators:
+        - name: "validator"
+          self_delegation: "100000000000000"   # 100M UMESH (в базовом деномине uumesh)
+          commission_rate: "0.05"       # must be >= staking.min_commission_rate (0.05)
+          commission_max: "0.20"
+          commission_max_change: "0.01"
+          min_self_delegation: "1000000000000"   # 1M UMESH, prevents dust validators
+          operational_funds: "50000000000000"   # 50M UMESH for operations
+          website: "https://github.com/opscores/node-umesh"
+          security_contact: "security@umesh.network"
+          details: "Umesh Network genesis validator"
+
+  # Validation rules for decentralization
+  validation:
+    max_single_allocation_percent: 25.0   # No single account > 25%
+    max_insider_allocation_percent: 45.0  # Foundation + Team + Investors < 45%
+    min_validator_count: 1                # Minimum validators in genesis
+    dust_destination: "community_pool"    # Where to send rounding remainder
+
+# Module parameters
+modules:
+  # --- Staking ---
+  staking:
+    max_validators: 100
+    max_entries: 7
+    historical_entries: 10000
+    unbonding_time: "1814400s"          # 21 days
+    # Network-wide floor on validator commission, written to
+    # app_state.staking.params.min_commission_rate. Validators can never set
+    # commission below this (nor race it down to 0% to dump competition).
+    min_commission_rate: "0.050000000000000000"   # 5% floor, prevents race-to-zero
+
+
+  # --- Distribution ---
+  distribution:
+    community_tax: "0.020000000000000000"
+    withdraw_addr_enabled: true
+
+  # --- Bank ---
+  bank:
+    default_send_enabled: true
+
+  # --- Mint ---
+  mint:
+    inflation_rate_change: "0.13"
+    inflation_max: "0.20"
+    inflation_min: "0.07"
+    goal_bonded: "0.67"
+    blocks_per_year: "6311520"
+    max_supply: "0"                    # "0" = unlimited supply driven by inflation (avoids cap panic)
+
+  # --- Governance ---
+  gov:
+    min_deposit: "50000000000"           # 50,000 UMESH (anti-spam for mainnet)
+    expedited_min_deposit: "200000000000" # 200,000 UMESH (must be > min_deposit)
+    max_deposit_period: "1209600s"       # 14 days
+    voting_period: "1209600s"            # 14 days
+    quorum: "0.334000000000000000"       # 33.4%
+    threshold: "0.500000000000000000"    # 50%
+    veto_threshold: "0.334000000000000000"
+    min_initial_deposit_ratio: "0.100000000000000000"   # 10% of min_deposit, anti-spam
+    burn_vote_quorum: true               # burn deposit if proposal misses quorum (anti-spam)
+    burn_proposal_deposit_prevote: true  # burn deposit if proposal never reaches voting (anti-spam)
+
+    # Expedited proposals (SDK 0.50+)
+    expedited_voting_period: "86400s"         # 24h voting period for expedited proposals
+    expedited_threshold: "0.670000000000000000"  # 67% pass threshold (must be > threshold)
+
+    # Proposal cancellation (SDK 0.50+)
+    proposal_cancel_ratio: "0.500000000000000000"  # 50% of deposit burned on cancel
+    proposal_cancel_dest: ""                    # empty = burn, or address to receive funds
+
+    # Anti-spam (SDK 0.50+)
+    burn_vote_veto: true                 # burn deposit when NO_WITH_VETO wins
+    min_deposit_ratio: "0.010000000000000000"  # 1% minimum initial deposit ratio
+
+    # Starting proposal ID (useful for forks)
+    starting_proposal_id: "1"
+
+  # --- Slashing ---
+  slashing:
+    signed_blocks_window: "10000"
+    min_signed_per_window: "0.050000000000000000"
+    downtime_jail_duration: "600s"
+    slash_fraction_double_sign: "0.050000000000000000"
+    slash_fraction_downtime: "0.000100000000000000"
+
+  # --- Wasm (wasmd) ---
+  wasm:
+    code_upload_access: "nobody"
+    instantiate_default_permission: "nobody"
+
+  # --- Epochs (x/epochs) ---
+  # NOTE: only applied if the x/epochs module is compiled into umeshd.
+  # Otherwise these parameters are skipped with a warning.
+  epochs:
+    epochs:
+      - identifier: "day"
+        duration: "86400s"               # interval between ticks (Go duration)
+        # start_time: "2026-10-01T00:00:00Z"   # optional; empty = genesis time
+      - identifier: "week"
+        duration: "604800s"
+
+  # --- Protocolpool (x/protocolpool) ---
+  # Separate module account for community pool funds (independent from
+  # x/distribution). NOTE: only applied if compiled into umeshd, otherwise
+  # skipped with a warning.
+  protocolpool:
+    enabled_distribution_denoms: ["uumesh"]
+    distribution_frequency: 7200          # distribute funds every N blocks
+    # continuous_funds:
+    #   - recipient: "umesh10d07y265gmmuvt4z0w9aw880jnsr700jplz74g"
+    #     percentage: "0.02"              # decimal in (0, 1]
+    #     expiry: "2030-01-01T00:00:00Z"  # optional RFC3339
+
+# Soft launch configuration
+soft_launch:
+  enabled: true
+  disable_bank_send: true               # bank send_enabled = false for uumesh
+  disable_ibc_transfer: true            # IBC transfers disabled
+  allow_staking: true                   # Keep staking enabled (needed for consensus)
+  allow_gov: true                       # Keep governance enabled
+  allow_wasm_instantiate: false         # Optional: disable wasm instantiation
+  disable_inflation: false              # Set true to pause minting during soft launch

@@ -1,0 +1,38 @@
+# Node configuration for a post-genesis validator joining an existing network.
+#
+# Replace placeholder values with your actual configuration.
+# Never store secrets in this file — use --keyring-password-file/stdin/exec.
+# chain.chainId: required (validated in internal/yamlconfig/types.go:83).
+# chain.denom: optional when join.* is set — auto-extracted from genesis bond_denom
+#   (fallback gov.min_deposit) and validated; mismatch aborts init (internal/nodeinit/genesis.go:853).
+# join.*: at least one of genesisUrl / sentryRpc / validatorRpc is required for validator.
+
+apiVersion: umesh.network/v1
+kind: Node
+role: validator
+
+node:
+  dataDir: ./data-validator
+  moniker: my-validator
+  environment: production
+
+chain:
+  chainId: umesh-testnet-1          # required
+  denom: uumesh                      # optional if join.* set — auto-extracted from genesis (can be removed)
+  minGasPrice: "0.0025"              # required
+
+join:
+  genesisUrl: https://example.com/genesis.json
+  genesisSha256: ""
+  sentryRpc: http://10.0.0.5:26657
+  validatorRpc: http://10.0.0.10:26657
+
+network:
+  seeds: ""
+  persistentPeers: "sentry1@10.0.0.5:26656"
+  externalAddress: "203.0.113.10:26656"  # production: set public IP:port or CometBFT advertises Docker bridge 172.x (warn in validator.go:116)
+  usePrivate: false
+
+telemetry:
+  endpoint: "http://otel-collector.monitoring.svc:4317"
+  serviceName: "umesh-validator"

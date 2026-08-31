@@ -1,0 +1,37 @@
+# Build artifacts
+/umeshctl
+/umeshctl-linux-*
+/umeshctl-darwin-*
+/umeshctl-windows-*
+/dist/
+
+# Node data & configuration
+data/
+data-*/
+backups/
+*.tmp
+priv_validator_key.json
+node_key.json
+priv_validator_state.json
+
+# Secrets
+*.key
+*.pem
+.env
+.env.*
+!.env.*.example
+.sentry-connection
+data/config/.sentry-connection
+
+# Logs
+*.log
+
+# Tooling
+.dockerignore
+.coverage*
+coverage.out
+graphify-out/
+.codegraph/
+.opencode/
+.graphifyignore
+AGENTS.md
